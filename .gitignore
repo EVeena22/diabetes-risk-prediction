@@ -1,0 +1,6 @@
+.env
+venv/
+__pycache__/
+*.pyc
+predictions_log.csv
+.DS_Store
