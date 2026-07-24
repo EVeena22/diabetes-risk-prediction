@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Risk Simulator - Diabetes Predictor</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", sans-serif; }
+    .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    input[type="range"]::-webkit-slider-thumb {
+      background: #4f46e5;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <!-- Navbar -->
+  <nav class="bg-white shadow-lg border-b border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <div class="flex items-center">
+          <div class="gradient-bg p-2 rounded-lg">
+            <i class="fas fa-heartbeat text-white text-xl"></i>
+          </div>
+          <span class="ml-3 text-xl font-bold text-gray-800">Diabetes Predictor</span>
+        </div>
+        <div class="hidden md:flex space-x-4">
+          <a href="/" class="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium">
+            <i class="fas fa-home mr-2"></i>Dashboard
+          </a>
+          <a href="/batch" class="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium">
+            <i class="fas fa-file-upload mr-2"></i>Batch Prediction
+          </a>
+          <a href="/risk-simulator" class="px-4 py-2 rounded-lg bg-indigo-50 text-indigo-700 font-semibold">
+            <i class="fas fa-sliders-h mr-2"></i>Risk Simulator
+          </a>
+          <a href="/model-performance" class="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium">
+            <i class="fas fa-chart-line mr-2"></i>Model Performance
+          </a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <header class="mb-8">
+      <h1 class="text-4xl font-bold text-gray-900 mb-2">Interactive Risk Simulator</h1>
+      <p class="text-gray-600">
+        Adjust key health metrics to see how they influence predicted diabetes risk in real time.
+      </p>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Sliders -->
+      <section class="lg:col-span-2 bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
+        <h2 class="text-2xl font-bold text-gray-900 mb-4">Adjust Health Metrics</h2>
+        <p class="text-sm text-gray-600 mb-6">
+          Use the sliders to simulate lifestyle or clinical changes. Each change triggers a new prediction.
+        </p>
+
+        <div class="space-y-6">
+          <!-- Glucose -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label for="glucoseSlider" class="text-sm font-medium text-gray-700">Glucose</label>
+              <span id="glucoseValue" class="text-sm font-mono text-gray-800">120</span>
+            </div>
+            <input id="glucoseSlider" type="range" min="0" max="200" step="1" value="120"
+                   class="w-full" />
+            <p class="text-xs text-gray-500 mt-1">Typical fasting range ~70–99 mg/dL; higher values may indicate increased risk.</p>
+          </div>
+
+          <!-- Insulin -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label for="insulinSlider" class="text-sm font-medium text-gray-700">Insulin</label>
+              <span id="insulinValue" class="text-sm font-mono text-gray-800">80</span>
+            </div>
+            <input id="insulinSlider" type="range" min="0" max="300" step="1" value="80"
+                   class="w-full" />
+            <p class="text-xs text-gray-500 mt-1">Reflects circulating insulin levels; patterns may differ with insulin resistance.</p>
+          </div>
+
+          <!-- BMI -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label for="bmiSlider" class="text-sm font-medium text-gray-700">BMI</label>
+              <span id="bmiValue" class="text-sm font-mono text-gray-800">26.0</span>
+            </div>
+            <input id="bmiSlider" type="range" min="15" max="45" step="0.1" value="26"
+                   class="w-full" />
+            <p class="text-xs text-gray-500 mt-1">Higher BMI is associated with increased risk for type 2 diabetes.</p>
+          </div>
+
+          <!-- Age -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label for="ageSlider" class="text-sm font-medium text-gray-700">Age</label>
+              <span id="ageValue" class="text-sm font-mono text-gray-800">40</span>
+            </div>
+            <input id="ageSlider" type="range" min="18" max="90" step="1" value="40"
+                   class="w-full" />
+            <p class="text-xs text-gray-500 mt-1">Risk of type 2 diabetes generally increases with age.</p>
+          </div>
+
+          <button id="simulateBtn"
+                  class="mt-4 inline-flex items-center px-6 py-3 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700">
+            <i class="fas fa-play mr-2"></i>Run Simulation
+          </button>
+        </div>
+      </section>
+
+      <!-- Result -->
+      <aside class="space-y-6">
+        <div class="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+          <h3 class="text-lg font-bold text-gray-900 mb-4">Simulated Risk</h3>
+          <div id="simResult" class="space-y-3 text-sm text-gray-700">
+            <p>Move the sliders and click "Run Simulation" to view model output.</p>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+          <h3 class="text-lg font-bold text-gray-900 mb-4">Top Risk Drivers</h3>
+          <ul id="topFactorsList" class="space-y-2 text-sm text-gray-700">
+            <li class="text-gray-400">Will appear after simulation.</li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Advice -->
+    <section class="mt-8 bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-2xl font-bold text-gray-900">Personalized Lifestyle Advice</h2>
+          <p class="text-sm text-gray-600">
+            Generated from model output using an LLM, meant to support conversation with patients.
+          </p>
+        </div>
+        <div class="text-xs text-gray-500 flex items-center space-x-2">
+          <i class="fas fa-user-md text-indigo-500"></i>
+          <span>This guidance does not replace medical care.</span>
+        </div>
+      </div>
+      <div id="adviceText" class="text-sm text-gray-800 leading-relaxed">
+        Advice will appear here after running a simulation.
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const glucoseSlider = document.getElementById("glucoseSlider");
+    const insulinSlider = document.getElementById("insulinSlider");
+    const bmiSlider = document.getElementById("bmiSlider");
+    const ageSlider = document.getElementById("ageSlider");
+
+    const glucoseValue = document.getElementById("glucoseValue");
+    const insulinValue = document.getElementById("insulinValue");
+    const bmiValue = document.getElementById("bmiValue");
+    const ageValue = document.getElementById("ageValue");
+
+    const simulateBtn = document.getElementById("simulateBtn");
+    const simResultEl = document.getElementById("simResult");
+    const topFactorsList = document.getElementById("topFactorsList");
+    const adviceEl = document.getElementById("adviceText");
+
+    function updateDisplayedValues() {
+      glucoseValue.textContent = glucoseSlider.value;
+      insulinValue.textContent = insulinSlider.value;
+      bmiValue.textContent = parseFloat(bmiSlider.value).toFixed(1);
+      ageValue.textContent = ageSlider.value;
+    }
+
+    [glucoseSlider, insulinSlider, bmiSlider, ageSlider].forEach((slider) => {
+      slider.addEventListener("input", updateDisplayedValues);
+    });
+    updateDisplayedValues();
+
+    async function simulateRisk(currentValues) {
+      const res = await fetch("/api/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(currentValues),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || res.statusText);
+      }
+      return res.json();
+    }
+
+    async function fetchAdvice(predictionResult) {
+      const payload = {
+        metrics: predictionResult.input,
+        probability: predictionResult.probability,
+        label: predictionResult.label,
+        insights: predictionResult.insights || [],
+      };
+      const res = await fetch("/api/advice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      adviceEl.textContent = data.advice;
+    }
+
+    function renderSimResult(result) {
+      const prob = (result.probability * 100).toFixed(1);
+      const isHigh = result.label === 1;
+      const riskLabel = isHigh ? "High Risk" : "Low Risk";
+
+      simResultEl.innerHTML = `
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-xs uppercase tracking-wide font-semibold text-gray-500">Simulated Diabetes Risk</p>
+            <p class="mt-1 text-3xl font-extrabold ${
+              isHigh ? "text-red-600" : "text-green-600"
+            }">${prob}%</p>
+          </div>
+          <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+            isHigh ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"
+          }">
+            <i class="fas fa-circle mr-2 text-[8px]"></i>${riskLabel}
+          </span>
+        </div>
+        <div class="mt-4 grid grid-cols-2 gap-3 text-xs text-gray-600">
+          <div>
+            <p class="font-semibold text-gray-800">Simulated Metrics</p>
+            <p>Glucose: <span class="font-mono">${result.input.Glucose}</span></p>
+            <p>Insulin: <span class="font-mono">${result.input.Insulin}</span></p>
+            <p>BMI: <span class="font-mono">${result.input.BMI}</span></p>
+            <p>Age: <span class="font-mono">${result.input.Age}</span></p>
+          </div>
+          <div>
+            <p class="font-semibold text-gray-800">How to interpret</p>
+            <p>Use this as a “what if” tool when discussing potential lifestyle or treatment changes with a clinician.</p>
+            <p>Risk estimates are based on patterns in the training data, not on individual diagnosis.</p>
+          </div>
+        </div>
+      `;
+
+      const insights = result.insights || [];
+      if (!insights.length) {
+        topFactorsList.innerHTML = `<li class="text-gray-400">No feature importance available.</li>`;
+      } else {
+        topFactorsList.innerHTML = "";
+        insights.forEach((f) => {
+          const li = document.createElement("li");
+          li.className = "flex items-center justify-between";
+          li.innerHTML = `
+            <span class="font-medium text-gray-800">${f.feature}</span>
+            <span class="text-xs ${
+              f.direction === "increases_risk"
+                ? "text-red-600"
+                : "text-green-600"
+            }">${f.direction.replace("_", " ")}</span>
+          `;
+          topFactorsList.appendChild(li);
+        });
+      }
+    }
+
+    simulateBtn.addEventListener("click", async () => {
+      const values = {
+        Glucose: parseFloat(glucoseSlider.value),
+        Insulin: parseFloat(insulinSlider.value),
+        BMI: parseFloat(bmiSlider.value),
+        Age: parseFloat(ageSlider.value),
+      };
+
+      simulateBtn.disabled = true;
+      simulateBtn.classList.add("opacity-70");
+      try {
+        const result = await simulateRisk(values);
+        renderSimResult(result);
+        await fetchAdvice(result);
+      } catch (e) {
+        console.error(e);
+        alert("Failed to simulate risk: " + e.message);
+      } finally {
+        simulateBtn.disabled = false;
+        simulateBtn.classList.remove("opacity-70");
+      }
+    });
+  </script>
+</body>
+</html>
