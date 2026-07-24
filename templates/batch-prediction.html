@@ -1,0 +1,436 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Batch Prediction - Diabetes Predictor</title>
+ 
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", sans-serif; }
+    .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .file-upload-area {
+      border: 2px dashed #cbd5e1;
+      transition: all 0.3s eafse;
+    }
+
+    .file-upload-area.drag-over {
+      border-color: #6366f1;
+      background-color: #eef2ff;
+    }
+    .progress-bar { transition: width 0.5s ease; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <!-- Navbar -->
+  <nav class="bg-white shadow-lg border-b border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <div class="flex items-center">
+          <div class="gradient-bg p-2 rounded-lg">
+            <i class="fas fa-heartbeat text-white text-xl"></i>
+          </div>
+          <span class="ml-3 text-xl font-bold text-gray-800">Diabetes Predictor</span>
+        </div>
+        <div class="hidden md:flex space-x-4">
+          <a href="/" class="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium">
+            <i class="fas fa-home mr-2"></i>Dashboard
+          </a>
+          <a href="/batch" class="px-4 py-2 rounded-lg bg-indigo-50 text-indigo-700 font-semibold">
+            <i class="fas fa-file-upload mr-2"></i>Batch Prediction
+          </a>
+          <a href="/risk-simulator" class="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium">
+            <i class="fas fa-sliders-h mr-2"></i>Risk Simulator
+          </a>
+          <a href="/model-performance" class="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 font-medium">
+            <i class="fas fa-chart-line mr-2"></i>Model Performance
+          </a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <header class="mb-8">
+      <h1 class="text-4xl font-bold text-gray-900 mb-2">Batch Prediction</h1>
+      <p class="text-gray-600">Upload CSV or JSON files for bulk diabetes risk predictions across multiple patients.</p>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <!-- Upload card -->
+      <section class="lg:col-span-2 bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
+        <h2 class="text-2xl font-bold text-gray-900 mb-2">Upload Data File</h2>
+        <p class="text-sm text-gray-600 mb-4">
+          Supported formats: CSV, JSON. Maximum size 10MB.
+        </p>
+
+        <div id="dropZone"
+             class="file-upload-area rounded-xl p-12 text-center cursor-pointer bg-gray-50">
+          <input type="file" id="fileInput" accept=".csv,.json" class="hidden" />
+          <div id="uploadIcon">
+            <i class="fas fa-cloud-upload-alt text-6xl text-gray-400 mb-4"></i>
+            <p class="text-lg font-semibold text-gray-700 mb-2">Drag and drop your file here</p>
+            <p class="text-sm text-gray-500 mb-4">or</p>
+            <button type="button"
+                    onclick="document.getElementById('fileInput').click()"
+                    class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold">
+              <i class="fas fa-folder-open mr-2"></i>Browse Files
+            </button>
+          </div>
+
+          <div id="fileInfo" class="hidden">
+            <i class="fas fa-file-alt text-6xl text-indigo-600 mb-4"></i>
+            <p id="fileName" class="text-lg font-semibold text-gray-700 mb-1"></p>
+            <p id="fileSize" class="text-sm text-gray-500 mb-4"></p>
+            <button type="button"
+                    onclick="removeFile()"
+                    class="text-red-600 hover:text-red-700 font-medium">
+              <i class="fas fa-times-circle mr-1"></i>Remove File
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800 space-y-1">
+          <h3 class="font-semibold flex items-center text-blue-900">
+            <i class="fas fa-info-circle mr-1"></i>Required Format
+          </h3>
+          <p><strong>Columns</strong>: Glucose, Insulin, BMI, Age</p>
+          <p><strong>Example CSV</strong>:</p>
+          <code class="block bg-white p-2 rounded mt-2 text-xs">
+            Glucose,Insulin,BMI,Age<br />
+            120,80,25.5,35<br />
+            148,90,32.8,45
+          </code>
+        </div>
+
+        <button id="processBtn"
+                onclick="runPredictions()"
+                disabled
+                class="w-full mt-6 px-6 py-4 bg-gray-300 text-gray-500 rounded-xl font-bold text-lg cursor-not-allowed">
+          <i class="fas fa-cog mr-2"></i>Process Predictions
+        </button>
+
+        <div id="progressSection" class="mt-6 hidden">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-semibold text-gray-700">Processing...</span>
+            <span id="progressText" class="text-sm font-semibold text-indigo-600">0%</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+            <div id="progressBar" class="progress-bar bg-indigo-600 h-3 rounded-full" style="width: 0%"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Stats -->
+      <aside class="space-y-6">
+        <div class="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+          <h3 class="text-lg font-bold text-gray-900 mb-4">Quick Stats</h3>
+          <div class="space-y-4 text-sm">
+            <div class="flex items-center justify-between p-3 bg-blue-50 rounded-xl">
+              <div class="flex items-center">
+                <div class="bg-blue-600 p-2 rounded-lg mr-3">
+                  <i class="fas fa-file-alt text-white text-sm"></i>
+                </div>
+                <span class="font-semibold text-gray-700">Total Records</span>
+              </div>
+              <span id="totalRecords" class="text-xl font-bold text-blue-600">0</span>
+            </div>
+
+            <div class="flex items-center justify-between p-3 bg-green-50 rounded-xl">
+              <div class="flex items-center">
+                <div class="bg-green-600 p-2 rounded-lg mr-3">
+                  <i class="fas fa-check-circle text-white text-sm"></i>
+                </div>
+                <span class="font-semibold text-gray-700">Processed</span>
+              </div>
+              <span id="processedRecords" class="text-xl font-bold text-green-600">0</span>
+            </div>
+
+            <div class="flex items-center justify-between p-3 bg-red-50 rounded-xl">
+              <div class="flex items-center">
+                <div class="bg-red-600 p-2 rounded-lg mr-3">
+                  <i class="fas fa-exclamation-triangle text-white text-sm"></i>
+                </div>
+                <span class="font-semibold text-gray-700">High Risk</span>
+              </div>
+              <span id="highRiskCount" class="text-xl font-bold text-red-600">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+          <h3 class="text-lg font-bold text-gray-900 mb-4">Export Results</h3>
+          <div class="space-y-3">
+            <button id="exportCSV" onclick="exportResults('csv')" disabled
+                    class="w-full px-4 py-3 bg-gray-100 text-gray-400 rounded-xl font-semibold cursor-not-allowed">
+              <i class="fas fa-file-csv mr-2"></i>Download CSV
+            </button>
+            <button id="exportJSON" onclick="exportResults('json')" disabled
+                    class="w-full px-4 py-3 bg-gray-100 text-gray-400 rounded-xl font-semibold cursor-not-allowed">
+              <i class="fas fa-file-code mr-2"></i>Download JSON
+            </button>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Results -->
+    <section id="resultsSection" class="hidden bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+      <div class="p-6 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50 flex items-center justify-between">
+        <div>
+          <h2 class="text-2xl font-bold text-gray-900 mb-1">Prediction Results</h2>
+          <p class="text-sm text-gray-600">
+            Each row shows model risk level, probability, and top risk drivers.
+          </p>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">ID</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Glucose</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Insulin</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">BMI</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Age</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Risk Level</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Probability</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Top Drivers</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Prediction</th>
+            </tr>
+          </thead>
+          <tbody id="resultsTableBody" class="bg-white divide-y divide-gray-200"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let uploadedFile = null;
+    let predictionResults = [];
+
+    const dropZone = document.getElementById("dropZone");
+    const fileInput = document.getElementById("fileInput");
+
+    ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+    });
+
+    ["dragenter", "dragover"].forEach((eventName) => {
+      dropZone.addEventListener(eventName, () => dropZone.classList.add("drag-over"));
+    });
+
+    ["dragleave", "drop"].forEach((eventName) => {
+      dropZone.addEventListener(eventName, () => dropZone.classList.remove("drag-over"));
+    });
+
+    dropZone.addEventListener("drop", (e) => {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      handleFile(files[0]);
+    });
+
+    fileInput.addEventListener("change", (e) => {
+      const files = e.target.files;
+      handleFile(files[0]);
+    });
+
+    function handleFile(file) {
+      if (!file) return;
+      const validTypes = ["text/csv", "application/json"];
+      const ext = file.name.split(".").pop().toLowerCase();
+      if (!validTypes.includes(file.type) && !["csv", "json"].includes(ext)) {
+        alert("Please upload a CSV or JSON file.");
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        alert("File size exceeds 10MB limit.");
+        return;
+      }
+      uploadedFile = file;
+      displayFileInfo(file);
+      enableProcessButton();
+    }
+
+    function displayFileInfo(file) {
+      document.getElementById("uploadIcon").classList.add("hidden");
+      document.getElementById("fileInfo").classList.remove("hidden");
+      document.getElementById("fileName").textContent = file.name;
+      document.getElementById("fileSize").textContent = (file.size / 1024).toFixed(2) + " KB";
+    }
+
+    function removeFile() {
+      uploadedFile = null;
+      predictionResults = [];
+      document.getElementById("uploadIcon").classList.remove("hidden");
+      document.getElementById("fileInfo").classList.add("hidden");
+      document.getElementById("fileInput").value = "";
+      disableProcessButton();
+      document.getElementById("resultsSection").classList.add("hidden");
+      document.getElementById("totalRecords").textContent = "0";
+      document.getElementById("processedRecords").textContent = "0";
+      document.getElementById("highRiskCount").textContent = "0";
+    }
+
+    function enableProcessButton() {
+      const btn = document.getElementById("processBtn");
+      btn.disabled = false;
+      btn.classList.remove("bg-gray-300", "text-gray-500", "cursor-not-allowed");
+      btn.classList.add("bg-indigo-600", "hover:bg-indigo-700", "text-white", "cursor-pointer");
+    }
+
+    function disableProcessButton() {
+      const btn = document.getElementById("processBtn");
+      btn.disabled = true;
+      btn.classList.add("bg-gray-300", "text-gray-500", "cursor-not-allowed");
+      btn.classList.remove("bg-indigo-600", "hover:bg-indigo-700", "text-white", "cursor-pointer");
+    }
+
+    async function runPredictions() {
+      if (!uploadedFile) return;
+
+      const formData = new FormData();
+      formData.append("file", uploadedFile);
+
+      document.getElementById("progressSection").classList.remove("hidden");
+      document.getElementById("progressBar").style.width = "0%";
+      document.getElementById("progressText").textContent = "0%";
+      document.getElementById("processedRecords").textContent = "0";
+
+      try {
+        const res = await fetch("/api/batch-predict", {
+          method: "POST",
+          body: formData,
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || res.statusText);
+        }
+        const data = await res.json();
+        predictionResults = data.results || [];
+
+        const total = predictionResults.length;
+        document.getElementById("totalRecords").textContent = total.toString();
+        document.getElementById("processedRecords").textContent = total.toString();
+        document.getElementById("progressBar").style.width = "100%";
+        document.getElementById("progressText").textContent = "100";
+
+        setTimeout(() => {
+          document.getElementById("progressSection").classList.add("hidden");
+          finalizePredictions();
+        }, 400);
+      } catch (e) {
+        console.error(e);
+        alert("Batch prediction failed: " + e.message);
+        document.getElementById("progressSection").classList.add("hidden");
+      }
+    }
+
+    function finalizePredictions() {
+      displayResults();
+      enableExportButtons();
+      updateStats();
+    }
+
+    function displayResults() {
+      const section = document.getElementById("resultsSection");
+      const tableBody = document.getElementById("resultsTableBody");
+      section.classList.remove("hidden");
+      tableBody.innerHTML = "";
+
+      predictionResults.forEach((result) => {
+        tableBody.innerHTML += createResultRow(result);
+      });
+
+      const highRisk = predictionResults.filter((r) => r.label === 1).length;
+      document.getElementById("highRiskCount").textContent = highRisk.toString();
+    }
+
+    function createResultRow(result) {
+      const riskLevel = result.label === 1 ? "High" : "Low";
+      const riskClasses =
+        result.label === 1
+          ? "bg-red-100 text-red-800"
+          : "bg-green-100 text-green-800";
+      const predLabel = result.label === 1 ? "Positive" : "Negative";
+      const predClasses =
+        result.label === 1
+          ? "bg-red-100 text-red-800"
+          : "bg-green-100 text-green-800";
+
+      const topDrivers = result.insights
+        ? result.insights.map((f) => `${f.feature} (${f.direction.replace("_", " ")})`).join(", ")
+        : "N/A";
+
+      return `
+        <tr class="hover:bg-gray-50 transition-colors">
+          <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${result.id}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${result.Glucose}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${result.Insulin}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${Number(result.BMI).toFixed(1)}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${result.Age}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm">
+            <span class="px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full ${riskClasses}">
+              ${riskLevel}
+            </span>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-indigo-600">
+            ${(result.probability * 100).toFixed(1)}%
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${topDrivers}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm">
+            <span class="px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full ${predClasses}">
+              ${predLabel}
+            </span>
+          </td>
+        </tr>
+      `;
+    }
+
+    function updateStats() {
+      const highRisk = predictionResults.filter((r) => r.label === 1).length;
+      document.getElementById("highRiskCount").textContent = highRisk.toString();
+    }
+
+    function enableExportButtons() {
+      ["exportCSV", "exportJSON"].forEach((id) => {
+        const btn = document.getElementById(id);
+        btn.disabled = false;
+        btn.classList.remove("bg-gray-100", "text-gray-400", "cursor-not-allowed");
+        btn.classList.add("bg-indigo-600", "hover:bg-indigo-700", "text-white", "cursor-pointer");
+      });
+    }
+
+    function exportResults(format) {
+      if (!predictionResults.length) return;
+      if (format === "csv") {
+        const csv = Papa.unparse(predictionResults);
+        downloadFile(csv, "batch_predictions.csv", "text/csv");
+      } else if (format === "json") {
+        const json = JSON.stringify(predictionResults, null, 2);
+        downloadFile(json, "batch_predictions.json", "application/json");
+      }
+    }
+
+    function downloadFile(content, fileName, mimeType) {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>
